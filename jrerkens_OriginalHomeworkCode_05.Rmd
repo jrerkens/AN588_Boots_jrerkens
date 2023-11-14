@@ -1,0 +1,69 @@
+---
+title: "Homework 5!"
+author: "Jimmy Erkens"
+date: "`r Sys.Date()`"
+output: html_document
+theme: journal
+---
+
+# Challenges!
+
+## 1
+
+Nicole reminded me to use `slice_sample()`, thanks Nicole!
+
+## 2
+
+I forgot to be using quantiles for bootstrapped confidence intervals, so I had to remember to do that.
+
+## 3
+
+I forgot basic syntax for matrices and had to refresh myself for a second. We're all good though!
+
+# Load In the Data...
+
+```{r, library, message = F}
+library(tidyverse)
+library(curl)
+kandc <- read_csv(curl("https://raw.githubusercontent.com/fuzzyatelin/fuzzyatelin.github.io/master/AN588_Fall21/KamilarAndCooperData.csv")); head(kandc)
+```
+
+## Baby's first linear model
+
+```{r, lm}
+hw5model <- lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = kandc)
+summary(hw5model)
+hw5model$coefficients
+```
+
+The estimated log(HomeRange_km2) is -9.44123 when log(Body_mass_female_mean) = 0; this is $\beta_0$. As log(Body_mass_female_mean) increases by 1, the estimated log(HomeRange_km2) increases by 1.03; this is $\beta_1$.
+
+# Bootstrapped
+
+```{r, boot_the_strap}
+set.seed(812) # set the seed
+
+betas <- matrix(NA, nrow = 1000, ncol = 2) # initialize a NA matrix <3
+for (i in 1:1000){
+  new_sample = kandc %>% select(HomeRange_km2, Body_mass_female_mean) %>% # get the for loop going
+    filter(is.na(HomeRange_km2) == F & is.na(Body_mass_female_mean) == F) %>% slice_sample(n = 100) 
+  # don't want to deal w NA's in data
+  # n = 100 bc that's actually a good sample size!
+  betas[i, ] = lm(log(HomeRange_km2) ~ log(Body_mass_female_mean), data = new_sample)$coefficients
+}
+# subset our betas just for ease of whatever
+beta0s <- betas[, 1]
+beta1s <- betas[, 2]
+```
+
+Cool! We ran a bootstrapped estimate for our betas, what are our estimates?
+
+```{r, estimates}
+sebeta0 <- sd(beta0s); sebeta0 # these values are weak!
+sebeta1 <- sd(beta1s); sebeta1
+beta0CI <- quantile(beta0s, c(0.025, 0.975)); beta0CI
+beta1CI <- quantile(beta1s, c(0.025, 0.975)); beta1CI
+confint(hw5model)
+```
+
+Our bootstrapped method is ever so slightly more precise than the non-bootstrapped method! Who would've thought? 
